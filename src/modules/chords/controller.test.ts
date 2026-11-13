@@ -1,7 +1,12 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import type { FingerName, GestureFrame, HandGesture } from "../../gestures/types.ts";
-import { ChordsController, degreeFromHand, HOLD_MS } from "./controller.ts";
+import {
+  ChordsController,
+  DEGREE_SHAPES,
+  degreeFromHand,
+  HOLD_MS,
+} from "./controller.ts";
 
 function hand(
   handedness: "Left" | "Right",
@@ -47,48 +52,65 @@ describe("degreeFromHand", () => {
 });
 
 describe("ChordsController", () => {
-  it("is active while the left hand is shown, with the chord of its shape", () => {
+  it("plays as soon as the right hand is visible, with the left hand's chord", () => {
     const c = new ChordsController();
     const state = c.update(
-      frame({ left: hand("Left", ["index", "middle", "ring", "pinky"]), timestamp: 1000 }),
+      frame({
+        left: hand("Left", ["index", "middle", "ring", "pinky"]),
+        right: hand("Right", []),
+        timestamp: 1000,
+      }),
     );
     assert.equal(state.active, true);
     assert.equal(state.degree, 4);
   });
 
-  it("is silent without the left hand, even if the right hand is shown", () => {
+  it("is silent without the right hand, even if the left hand shows a chord", () => {
     const c = new ChordsController();
     assert.equal(c.update(frame({ timestamp: 0 })).active, false);
-    assert.equal(c.update(frame({ right: hand("Right", ["index"]), timestamp: 33 })).active, false);
+    const state = c.update(frame({ left: hand("Left", ["index", "middle"]), timestamp: 33 }));
+    assert.equal(state.active, false);
+    assert.equal(state.degree, 2, "the chord is still selected");
   });
 
-  it("does not need the right hand or any strum", () => {
+  it("needs no strum, and a strum changes nothing", () => {
     const c = new ChordsController();
-    const state = c.update(
+    const still = c.update(frame({ right: hand("Right", ["index"]), timestamp: 0 }));
+    assert.equal(still.active, true);
+    const strummed = c.update(
       frame({
-        left: hand("Left", ["thumb"]),
+        right: hand("Right", ["index"]),
         events: [{ type: "strum", hand: "Right", direction: "down", strength: 1 }],
-        timestamp: 0,
+        timestamp: 33,
       }),
     );
-    assert.equal(state.active, true);
-    assert.equal(state.degree, 6);
+    assert.equal(strummed.active, true);
   });
 
   it("holds through a short tracking dropout, then goes silent", () => {
     const c = new ChordsController();
-    c.update(frame({ left: hand("Left", ["index"]), timestamp: 1000 }));
+    c.update(frame({ right: hand("Right", []), timestamp: 1000 }));
     assert.equal(c.update(frame({ timestamp: 1100 })).active, true);
     assert.equal(c.update(frame({ timestamp: 1000 + HOLD_MS + 1 })).active, false);
-    assert.equal(c.update(frame({ left: hand("Left", ["index"]), timestamp: 2000 })).active, true);
+    assert.equal(c.update(frame({ right: hand("Right", []), timestamp: 2000 })).active, true);
   });
 
-  it("keeps the chord when the left hand makes a fist", () => {
+  it("keeps the last chord when the left hand makes a fist or disappears", () => {
     const c = new ChordsController();
-    c.update(frame({ left: hand("Left", ["index", "middle"]), timestamp: 0 }));
-    const state = c.update(frame({ left: hand("Left", []), timestamp: 33 }));
+    c.update(frame({ left: hand("Left", ["index", "middle"]), right: hand("Right", []), timestamp: 0 }));
+    assert.equal(c.update(frame({ left: hand("Left", []), right: hand("Right", []), timestamp: 33 })).degree, 2);
+    const state = c.update(frame({ right: hand("Right", []), timestamp: 66 }));
     assert.equal(state.degree, 2);
     assert.equal(state.active, true);
+  });
+
+  it("the legend shapes match what the controller recognises", () => {
+    DEGREE_SHAPES.forEach((shape, i) => {
+      const names = (["thumb", "index", "middle", "ring", "pinky"] as const).filter(
+        (_, f) => shape.fingers[f],
+      );
+      assert.equal(degreeFromHand(hand("Left", [...names])), i + 1);
+    });
   });
 
   it("flips major/minor with tilt, with hysteresis", () => {

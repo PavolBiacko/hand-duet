@@ -10,7 +10,7 @@ export interface ChordsState {
   flipped: boolean;
   /** Index into OCTAVES, chosen by where the right hand is (left to right). */
   octaveIndex: number;
-  /** True while the left hand is shown: the chord sounds at full volume. */
+  /** True while the right hand is shown: the chord sounds at full volume. */
   active: boolean;
 }
 
@@ -22,7 +22,7 @@ const TILT_OFF_DEG = 22;
 const ZONE_EDGES = [0.667, 0.833];
 const ZONE_MARGIN = 0.02;
 
-/** The chord keeps sounding this long after the left hand was last seen. */
+/** The chord keeps sounding this long after the right hand was last seen. */
 export const HOLD_MS = 200;
 
 /**
@@ -53,30 +53,31 @@ function octaveZone(previous: number, x: number): number {
 /**
  * The Chords module's logic, without any audio: gestures in, chord state out.
  *
- * Left hand: showing it makes the chord sound; its finger shape
- * picks the degree and tilting it swaps major/minor.
- * Right hand (optional): its sideways position picks the octave.
+ * Left hand: its finger shape picks the degree and tilting it swaps
+ * major/minor. When it is not visible the last chord is kept.
+ * Right hand: while it is visible the chord sounds (no strumming needed);
+ * its sideways position picks the octave.
  */
 export class ChordsController {
   state: ChordsState = { degree: 1, flipped: false, octaveIndex: 1, active: false };
-  private lastLeftAt = -Infinity;
+  private lastRightAt = -Infinity;
 
   update(gestures: GestureFrame): ChordsState {
     const { left, right } = gestures;
     const s = this.state;
 
     if (left) {
-      this.lastLeftAt = gestures.timestamp;
       const degree = degreeFromHand(left);
       if (degree !== null) s.degree = degree;
       const tiltDeg = Math.abs((left.tilt * 180) / Math.PI);
       s.flipped = schmitt(s.flipped, tiltDeg, TILT_ON_DEG, TILT_OFF_DEG);
     }
     if (right) {
+      this.lastRightAt = gestures.timestamp;
       s.octaveIndex = octaveZone(s.octaveIndex, right.x);
     }
     // A short hold, so one missed tracking frame does not chop the sound.
-    s.active = gestures.timestamp - this.lastLeftAt <= HOLD_MS;
+    s.active = gestures.timestamp - this.lastRightAt <= HOLD_MS;
     return s;
   }
 
@@ -85,3 +86,17 @@ export class ChordsController {
     if (degree >= 1 && degree <= 7) this.state.degree = degree;
   }
 }
+
+/** Which fingers are up for each degree (index 0 = degree I). */
+export const DEGREE_SHAPES: readonly {
+  fingers: readonly [thumb: boolean, index: boolean, middle: boolean, ring: boolean, pinky: boolean];
+  label: string;
+}[] = [
+  { fingers: [false, true, false, false, false], label: "1 finger" },
+  { fingers: [false, true, true, false, false], label: "2 fingers" },
+  { fingers: [false, true, true, true, false], label: "3 fingers" },
+  { fingers: [false, true, true, true, true], label: "4 fingers" },
+  { fingers: [true, true, true, true, true], label: "open hand" },
+  { fingers: [true, false, false, false, false], label: "thumb" },
+  { fingers: [true, true, false, false, false], label: "thumb + index" },
+];

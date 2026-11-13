@@ -1,3 +1,4 @@
+import type { ComponentType } from "react";
 import type { TrackedHand } from "../core/types.ts";
 import type { GestureFrame } from "../gestures/types.ts";
 
@@ -44,4 +45,6 @@ export interface InstrumentModule {
   render(canvas: ModuleCanvas): void;
   /** Called when the module is switched away from. Stop all sound here. */
   onExit(): void;
+  /** Optional settings UI (e.g. key selection) shown while the module is active. */
+  Controls?: ComponentType;
 }

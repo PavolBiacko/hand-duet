@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { unlockAudio } from "@/audio/unlock";
 import { moduleHost } from "@/modules/host";
+import { getModule } from "@/modules/registry";
 import { useHandTracking } from "@/pipeline/useHandTracking";
 import { useAppStore, type AppErrorKind } from "@/store/app";
 import HandCanvas from "./HandCanvas";
@@ -84,6 +85,7 @@ export default function Stage() {
         {status === "running" && <StatsBadge />}
         {status === "running" && <DebugToggle />}
         {status === "running" && <ModuleSwitcher />}
+        {status === "running" && <ModuleControls moduleId={activeModuleId} />}
 
         {status === "loading-model" && (
           <div className="absolute inset-x-0 bottom-6 flex justify-center">
@@ -134,6 +136,17 @@ export default function Stage() {
         )}
       </div>
     </main>
+  );
+}
+
+/** The active module's own settings (if it has any), under the Debug button. */
+function ModuleControls({ moduleId }: { moduleId: string }) {
+  const Controls = getModule(moduleId)?.Controls;
+  if (!Controls) return null;
+  return (
+    <div className="absolute right-3 top-12">
+      <Controls />
+    </div>
   );
 }
 
