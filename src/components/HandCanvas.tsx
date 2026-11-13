@@ -6,6 +6,7 @@ import {
   STRUM_FLASH_MS,
   type StrumFlash,
 } from "@/render/debugOverlay";
+import { moduleHost } from "@/modules/host";
 import { drawHands } from "@/render/skeleton";
 import { useAppStore } from "@/store/app";
 import { useHandsStore } from "@/store/hands";
@@ -54,6 +55,7 @@ export default function HandCanvas() {
       const now = performance.now();
       const { hands, gestures } = useHandsStore.getState();
       ctx.clearRect(0, 0, width, height);
+      moduleHost.render({ ctx, width, height, now });
       drawHands(ctx, hands, width, height);
       if (useAppStore.getState().debug) {
         flashes = flashes.filter((f) => now - f.at < STRUM_FLASH_MS);

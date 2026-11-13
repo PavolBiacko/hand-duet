@@ -1,9 +1,12 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { unlockAudio } from "@/audio/unlock";
+import { moduleHost } from "@/modules/host";
 import { useHandTracking } from "@/pipeline/useHandTracking";
 import { useAppStore, type AppErrorKind } from "@/store/app";
 import HandCanvas from "./HandCanvas";
+import ModuleSwitcher from "./ModuleSwitcher";
 import DebugToggle from "./DebugToggle";
 import StatsBadge from "./StatsBadge";
 
@@ -21,7 +24,25 @@ export default function Stage() {
   const videoRef = useRef<HTMLVideoElement>(null);
   const status = useAppStore((s) => s.status);
   const error = useAppStore((s) => s.error);
-  const { start } = useHandTracking(videoRef);
+  const activeModuleId = useAppStore((s) => s.activeModuleId);
+  const { start: startTracking } = useHandTracking(videoRef);
+
+  // Must run inside the click handler: browsers only unlock audio on a gesture.
+  const start = () => {
+    unlockAudio();
+    void startTracking();
+  };
+
+  // The active module only runs while tracking is running.
+  useEffect(() => {
+    if (status !== "running") return;
+    void moduleHost.activate(activeModuleId);
+  }, [status, activeModuleId]);
+  useEffect(() => {
+    if (status === "running") return;
+    moduleHost.deactivate();
+  }, [status]);
+  useEffect(() => () => moduleHost.deactivate(), []);
   const [aspect, setAspect] = useState(16 / 9);
 
   // Keep the stage the same shape as the camera image, so landmarks (0..1)
@@ -62,6 +83,7 @@ export default function Stage() {
         {live && <HandCanvas />}
         {status === "running" && <StatsBadge />}
         {status === "running" && <DebugToggle />}
+        {status === "running" && <ModuleSwitcher />}
 
         {status === "loading-model" && (
           <div className="absolute inset-x-0 bottom-6 flex justify-center">

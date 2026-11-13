@@ -35,6 +35,8 @@ Tests use Node's built-in test runner (Node 22.6+), so pure modules import each 
 - `src/core/` – camera access, MediaPipe tracking worker, landmark smoothing, FPS
 - `src/gestures/` – pure gesture layer: landmarks in, gestures and events out
 - `src/pipeline/` – React hook that wires camera → tracking → smoothing → gestures
+- `src/modules/` – instruments. Each implements `InstrumentModule` (`types.ts`) and is listed in `registry.ts`
+- `src/audio/` – shared audio helpers
 - `src/render/` – Canvas 2D drawing (hand skeleton, gesture debug overlay)
 - `src/store/` – Zustand stores (app status, per-frame hands)
 - `src/components/` – React UI

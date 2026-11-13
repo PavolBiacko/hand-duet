@@ -1,5 +1,6 @@
 import { create } from "zustand";
 import type { CameraErrorKind } from "@/core/camera";
+import { DEFAULT_MODULE_ID } from "@/modules/registry";
 
 export type AppStatus =
   | "idle"
@@ -28,6 +29,9 @@ interface AppState {
   handCount: number;
   /** Show the gesture debug overlay on top of the video. */
   debug: boolean;
+  /** Id of the module that is (or will be) playing. */
+  activeModuleId: string;
+  setActiveModule: (id: string) => void;
   setDebug: (debug: boolean) => void;
   setStatus: (status: AppStatus) => void;
   setError: (error: AppError) => void;
@@ -43,7 +47,8 @@ const initial = {
   fps: 0,
   inferenceMs: 0,
   handCount: 0,
-  debug: true,
+  debug: false,
+  activeModuleId: DEFAULT_MODULE_ID,
 };
 
 export const useAppStore = create<AppState>((set) => ({
@@ -53,5 +58,7 @@ export const useAppStore = create<AppState>((set) => ({
   setDelegate: (delegate) => set({ delegate }),
   setStats: (stats) => set(stats),
   setDebug: (debug) => set({ debug }),
-  reset: () => set((s) => ({ ...initial, debug: s.debug })),
+  setActiveModule: (activeModuleId) => set({ activeModuleId }),
+  reset: () =>
+    set((s) => ({ ...initial, debug: s.debug, activeModuleId: s.activeModuleId })),
 }));

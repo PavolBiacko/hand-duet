@@ -6,6 +6,7 @@ import { FpsMeter } from "@/core/fps";
 import { HandSmoother } from "@/core/smoothing";
 import { HandTracker } from "@/core/tracker";
 import { GestureEngine } from "@/gestures";
+import { moduleHost } from "@/modules/host";
 import { useAppStore } from "@/store/app";
 import { useHandsStore } from "@/store/hands";
 
@@ -14,7 +15,7 @@ const STATS_INTERVAL_MS = 500;
 
 /**
  * Owns the whole input pipeline for a <video> element:
- * camera -> tracking worker -> smoothing -> gestures -> hands store.
+ * camera -> tracking worker -> smoothing -> gestures -> hands store + active module.
  * Status and errors go to the app store.
  */
 export function useHandTracking(videoRef: RefObject<HTMLVideoElement | null>) {
@@ -100,6 +101,7 @@ export function useHandTracking(videoRef: RefObject<HTMLVideoElement | null>) {
           gestures,
           timestamp: frame.timestamp,
         });
+        moduleHost.frame(hands, gestures, { timestamp: frame.timestamp, aspect });
 
         const now = performance.now();
         const currentFps = fps.tick(now);
