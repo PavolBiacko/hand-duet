@@ -10,11 +10,8 @@ export interface ChordsState {
   flipped: boolean;
   /** Index into OCTAVES, chosen by where the right hand is (left to right). */
   octaveIndex: number;
-}
-
-export interface PlayCommand extends ChordsState {
-  /** 0..1, how hard the strum was. */
-  strength: number;
+  /** True while the left hand is shown: the chord sounds at full volume. */
+  active: boolean;
 }
 
 /** Tilt (degrees from upright) that flips major/minor, and where it flips back. */
@@ -24,6 +21,9 @@ const TILT_OFF_DEG = 22;
 /** Right-hand x positions where the octave zones meet, and the hysteresis margin. */
 const ZONE_EDGES = [0.667, 0.833];
 const ZONE_MARGIN = 0.02;
+
+/** The chord keeps sounding this long after the left hand was last seen. */
+export const HOLD_MS = 200;
 
 /**
  * Chord shape of the left hand:
@@ -51,21 +51,22 @@ function octaveZone(previous: number, x: number): number {
 }
 
 /**
- * The Chords module's logic, without any audio: gestures in, "play this
- * chord" commands out.
+ * The Chords module's logic, without any audio: gestures in, chord state out.
  *
- * Left hand: finger shape picks the degree, tilting swaps major/minor.
- * Right hand: sideways position picks the octave, a downward flick strums
- * (harder flick = louder).
+ * Left hand: showing it makes the chord sound; its finger shape
+ * picks the degree and tilting it swaps major/minor.
+ * Right hand (optional): its sideways position picks the octave.
  */
 export class ChordsController {
-  state: ChordsState = { degree: 1, flipped: false, octaveIndex: 1 };
+  state: ChordsState = { degree: 1, flipped: false, octaveIndex: 1, active: false };
+  private lastLeftAt = -Infinity;
 
-  update(gestures: GestureFrame): PlayCommand | null {
+  update(gestures: GestureFrame): ChordsState {
     const { left, right } = gestures;
     const s = this.state;
 
     if (left) {
+      this.lastLeftAt = gestures.timestamp;
       const degree = degreeFromHand(left);
       if (degree !== null) s.degree = degree;
       const tiltDeg = Math.abs((left.tilt * 180) / Math.PI);
@@ -74,13 +75,9 @@ export class ChordsController {
     if (right) {
       s.octaveIndex = octaveZone(s.octaveIndex, right.x);
     }
-
-    for (const event of gestures.events) {
-      if (event.type === "strum" && event.hand === "Right" && event.direction === "down") {
-        return { ...s, strength: event.strength };
-      }
-    }
-    return null;
+    // A short hold, so one missed tracking frame does not chop the sound.
+    s.active = gestures.timestamp - this.lastLeftAt <= HOLD_MS;
+    return s;
   }
 
   /** Select a degree directly (keyboard fallback). */
