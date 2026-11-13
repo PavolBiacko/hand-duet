@@ -8,7 +8,8 @@
     "start": "next start",
     "lint": "eslint",
     "typecheck": "tsc --noEmit",
-    "postinstall": "node scripts/copy-mediapipe-wasm.mjs"
+    "postinstall": "node scripts/copy-mediapipe-wasm.mjs",
+    "test": "node --experimental-strip-types --test --test-reporter=spec \"src/**/*.test.ts\""
   },
   "dependencies": {
     "@mediapipe/tasks-vision": "^1.2.3",

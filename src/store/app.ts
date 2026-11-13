@@ -26,6 +26,9 @@ interface AppState {
   inferenceMs: number;
   /** Number of hands currently tracked. */
   handCount: number;
+  /** Show the gesture debug overlay on top of the video. */
+  debug: boolean;
+  setDebug: (debug: boolean) => void;
   setStatus: (status: AppStatus) => void;
   setError: (error: AppError) => void;
   setDelegate: (delegate: "GPU" | "CPU") => void;
@@ -40,6 +43,7 @@ const initial = {
   fps: 0,
   inferenceMs: 0,
   handCount: 0,
+  debug: true,
 };
 
 export const useAppStore = create<AppState>((set) => ({
@@ -48,5 +52,6 @@ export const useAppStore = create<AppState>((set) => ({
   setError: (error) => set({ status: "error", error }),
   setDelegate: (delegate) => set({ delegate }),
   setStats: (stats) => set(stats),
-  reset: () => set(initial),
+  setDebug: (debug) => set({ debug }),
+  reset: () => set((s) => ({ ...initial, debug: s.debug })),
 }));

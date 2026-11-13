@@ -1,7 +1,13 @@
 "use client";
 
 import { useEffect, useRef } from "react";
+import {
+  drawDebugOverlay,
+  STRUM_FLASH_MS,
+  type StrumFlash,
+} from "@/render/debugOverlay";
 import { drawHands } from "@/render/skeleton";
+import { useAppStore } from "@/store/app";
 import { useHandsStore } from "@/store/hands";
 
 /** Transparent canvas on top of the video that draws the tracked hands. */
@@ -28,16 +34,40 @@ export default function HandCanvas() {
     const observer = new ResizeObserver(resize);
     observer.observe(canvas);
 
+    // Strums are one-frame events; remember them briefly so they can be drawn.
+    let flashes: StrumFlash[] = [];
+    const unsubscribe = useHandsStore.subscribe((state, previous) => {
+      if (state.gestures === previous.gestures) return;
+      for (const event of state.gestures.events) {
+        if (event.type !== "strum") continue;
+        flashes.push({
+          hand: event.hand,
+          direction: event.direction,
+          strength: event.strength,
+          at: performance.now(),
+        });
+      }
+    });
+
     let raf = 0;
     const frame = () => {
+      const now = performance.now();
+      const { hands, gestures } = useHandsStore.getState();
       ctx.clearRect(0, 0, width, height);
-      drawHands(ctx, useHandsStore.getState().hands, width, height);
+      drawHands(ctx, hands, width, height);
+      if (useAppStore.getState().debug) {
+        flashes = flashes.filter((f) => now - f.at < STRUM_FLASH_MS);
+        drawDebugOverlay(ctx, hands, gestures, flashes, now, width, height);
+      } else {
+        flashes = [];
+      }
       raf = requestAnimationFrame(frame);
     };
     raf = requestAnimationFrame(frame);
 
     return () => {
       cancelAnimationFrame(raf);
+      unsubscribe();
       observer.disconnect();
     };
   }, []);

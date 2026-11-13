@@ -1,9 +1,10 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { useHandTracking } from "@/core/useHandTracking";
+import { useHandTracking } from "@/pipeline/useHandTracking";
 import { useAppStore, type AppErrorKind } from "@/store/app";
 import HandCanvas from "./HandCanvas";
+import DebugToggle from "./DebugToggle";
 import StatsBadge from "./StatsBadge";
 
 const ERROR_TITLES: Record<AppErrorKind, string> = {
@@ -60,6 +61,7 @@ export default function Stage() {
         />
         {live && <HandCanvas />}
         {status === "running" && <StatsBadge />}
+        {status === "running" && <DebugToggle />}
 
         {status === "loading-model" && (
           <div className="absolute inset-x-0 bottom-6 flex justify-center">

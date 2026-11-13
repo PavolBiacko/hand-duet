@@ -1,9 +1,11 @@
 "use client";
 
 import { useCallback, useEffect, useRef, type RefObject } from "react";
-import { attachStream, CameraError, openCamera, stopStream } from "./camera";
-import { FpsMeter } from "./fps";
-import { HandTracker } from "./tracker";
+import { attachStream, CameraError, openCamera, stopStream } from "@/core/camera";
+import { FpsMeter } from "@/core/fps";
+import { HandSmoother } from "@/core/smoothing";
+import { HandTracker } from "@/core/tracker";
+import { GestureEngine } from "@/gestures";
 import { useAppStore } from "@/store/app";
 import { useHandsStore } from "@/store/hands";
 
@@ -11,8 +13,9 @@ import { useHandsStore } from "@/store/hands";
 const STATS_INTERVAL_MS = 500;
 
 /**
- * Owns the camera stream and the hand tracker for a <video> element.
- * Status and errors go to the app store, per-frame hands to the hands store.
+ * Owns the whole input pipeline for a <video> element:
+ * camera -> tracking worker -> smoothing -> gestures -> hands store.
+ * Status and errors go to the app store.
  */
 export function useHandTracking(videoRef: RefObject<HTMLVideoElement | null>) {
   const streamRef = useRef<MediaStream | null>(null);
@@ -72,6 +75,8 @@ export function useHandTracking(videoRef: RefObject<HTMLVideoElement | null>) {
 
     app.setStatus("loading-model");
     const fps = new FpsMeter();
+    const smoother = new HandSmoother();
+    const gestureEngine = new GestureEngine();
     let inferenceAvg = 0;
     let lastStats = 0;
 
@@ -84,7 +89,17 @@ export function useHandTracking(videoRef: RefObject<HTMLVideoElement | null>) {
       },
       onFrame: (frame) => {
         if (!isCurrent()) return;
-        useHandsStore.getState().setFrame(frame);
+        const hands = smoother.apply(frame.hands, frame.timestamp);
+        const aspect =
+          video.videoWidth && video.videoHeight
+            ? video.videoWidth / video.videoHeight
+            : 16 / 9;
+        const gestures = gestureEngine.update(hands, frame.timestamp, aspect);
+        useHandsStore.getState().setFrame({
+          hands,
+          gestures,
+          timestamp: frame.timestamp,
+        });
 
         const now = performance.now();
         const currentFps = fps.tick(now);
