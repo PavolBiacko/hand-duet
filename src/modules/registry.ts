@@ -1,9 +1,11 @@
 import { chordsModule } from "./chords";
+import { thereminModule } from "./theremin";
 import type { InstrumentModule } from "./types";
 
 /** All available modules, in the order they appear in the switcher. */
 export const modules: InstrumentModule[] = [
   chordsModule,
+  thereminModule,
 ];
 
 export const DEFAULT_MODULE_ID = modules[0].id;

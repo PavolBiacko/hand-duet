@@ -32,10 +32,12 @@ function play(command: PlayCommand): void {
 function onKeyDown(event: KeyboardEvent): void {
   if (event.repeat || event.metaKey || event.ctrlKey || event.altKey) return;
   const target = event.target as HTMLElement | null;
-  if (target?.closest("input, textarea, select, button, [contenteditable]")) return;
+  if (target?.closest("input, textarea, select, [contenteditable]")) return;
   if (event.key >= "1" && event.key <= "7") {
     controller.setDegree(Number(event.key));
   } else if (event.code === "Space") {
+    // On a focused button Space means "press the button"; leave that alone.
+    if (target?.closest("button, a")) return;
     event.preventDefault();
     play({ ...controller.state, strength: 0.6 });
   }
